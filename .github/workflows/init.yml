@@ -12,7 +12,7 @@ jobs:
     - name: Install node
       uses: actions/setup-node@v2
       with:
-        node-version: '12'
+        node-version: '12.7.0'
 
     - name: Get Status
       run: npm install && npm run start
