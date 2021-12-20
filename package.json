@@ -1,10 +1,14 @@
 {
   "name": "cpolar-status-get",
   "version": "0.0.1",
-  "private": true,
+  "description": "用于cpolar内网穿透后定时获取状态通过邮件发送自己",
+  "main": "index.js",
   "scripts": {
     "start": "node ./index.js"
   },
+  "keywords": [],
+  "author": "zs",
+  "license": "ISC",
   "dependencies": {
     "puppeteer": "^11.0.0"
   }
