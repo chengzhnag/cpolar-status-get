@@ -36,7 +36,7 @@ jobs:
           CPOLAR_PASSWORD: ${{ secrets.CPOLAR_PASSWORD }}
 
     - name: Send mail ✉️
-      uses: dawidd6/action-send-mail@v3
+      uses: dawidd6/action-send-mail@v2
       with:
         # smtp 服务器地址
         server_address: smtp.163.com
