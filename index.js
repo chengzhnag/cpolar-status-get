@@ -38,7 +38,7 @@ const start = () => {
       await newPage.click('#loginBtn');
       
       // 等待
-      await page.waitForNavigation();
+      await newPage.waitForNavigation();
 
       // 登录完成后替换url进入状态
       await newPage.evaluate(() => {
