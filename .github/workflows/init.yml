@@ -8,8 +8,6 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout 🛎️
-      uses: actions/checkout@v2.3.1
 
     - name: Install node
       uses: actions/setup-node@v2
@@ -19,8 +17,11 @@ jobs:
       with:
         node-version: '12.7.0'
 
+    - name: npm install
+      run: npm install
+    
     - name: Get Status
-      run: npm install && npm run start
+      run: npm run start
 
     - name: Send mail ✉️
       uses: dawidd6/action-send-mail@v3
