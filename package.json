@@ -1,0 +1,11 @@
+{
+  "name": "cpolar-status-get",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "node ./index.js"
+  },
+  "dependencies": {
+    "puppeteer": "^11.0.0"
+  }
+}
