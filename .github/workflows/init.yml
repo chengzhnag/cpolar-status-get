@@ -11,6 +11,9 @@ jobs:
 
     - name: Install node
       uses: actions/setup-node@v2
+      env:
+          CPOLAR_EMAIL: ${{ secrets.CPOLAR_EMAIL }}
+          CPOLAR_PASSWORD: ${{ secrets.CPOLAR_PASSWORD }}
       with:
         node-version: '12.7.0'
 
@@ -19,9 +22,6 @@ jobs:
 
     - name: Send mail ✉️
       uses: dawidd6/action-send-mail@v3
-      env:
-          CPOLAR_EMAIL: ${{ secrets.CPOLAR_EMAIL }}
-          CPOLAR_PASSWORD: ${{ secrets.CPOLAR_PASSWORD }}
       with:
         # smtp 服务器地址
         server_address: smtp.163.com
