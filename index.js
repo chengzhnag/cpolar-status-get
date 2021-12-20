@@ -36,6 +36,9 @@ const start = () => {
       await newPage.type('#password', process.env.CPOLAR_PASSWORD, { delay: 100 });
       // 点击登录按钮
       await newPage.click('#loginBtn');
+      
+      // 等待
+      await page.waitForNavigation();
 
       // 登录完成后替换url进入状态
       await newPage.evaluate(() => {
