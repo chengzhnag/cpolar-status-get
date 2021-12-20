@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+    - uses: actions/checkout@v2
     - name: Install node
       uses: actions/setup-node@v2
       env:
@@ -16,9 +17,7 @@ jobs:
           CPOLAR_PASSWORD: ${{ secrets.CPOLAR_PASSWORD }}
       with:
         node-version: '12.7.0'
-
-    - name: 🤣
-      run: ls
+        cache: 'npm'
       
     - name: npm install
       run: npm install
