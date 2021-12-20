@@ -28,12 +28,12 @@ jobs:
         cache: 'npm'
     - name: npm install
       run: npm install
-      env:
-          CPOLAR_EMAIL: ${{ secrets.CPOLAR_EMAIL }}
-          CPOLAR_PASSWORD: ${{ secrets.CPOLAR_PASSWORD }}
     
     - name: Get Status
       run: npm start
+      env:
+          CPOLAR_EMAIL: ${{ secrets.CPOLAR_EMAIL }}
+          CPOLAR_PASSWORD: ${{ secrets.CPOLAR_PASSWORD }}
 
     - name: Send mail ✉️
       uses: dawidd6/action-send-mail@v3
