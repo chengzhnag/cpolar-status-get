@@ -17,6 +17,9 @@ jobs:
       with:
         node-version: '12.7.0'
 
+    - name: 🤣
+      run: ls
+      
     - name: npm install
       run: npm install
     
