@@ -1,6 +1,6 @@
 name: Build and Deploy
 on: 
-  # push:
+  push:
   # 定时器
   schedule: 
     - cron: '0 9 * * *'
