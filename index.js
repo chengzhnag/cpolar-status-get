@@ -35,10 +35,10 @@ const start = () => {
       // 密码输入框输入，selector错误的话可以重新获取替换
       await newPage.type('#password', process.env.CPOLAR_PASSWORD, { delay: 100 });
       // 点击登录按钮
-      await newPage.click('#loginBtn');
-      
-      // 等待
-      await newPage.waitForNavigation();
+      await Promise.all([
+        newPage.waitForNavigation(),
+        newPage.click('#loginBtn'),
+      ]);
 
       // 登录完成后替换url进入状态
       await newPage.evaluate(() => {
