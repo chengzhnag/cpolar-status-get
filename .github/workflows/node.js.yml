@@ -7,7 +7,7 @@ on:
   push:
   # 定时器
   schedule: 
-    - cron: '0 9 * * *'
+    - cron: '0 1 * * *'
 
 jobs:
   build:
