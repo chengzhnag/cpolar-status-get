@@ -1,8 +1,6 @@
 const puppeteer = require('puppeteer');
 const fs = require("fs");
 
-console.log('index.js start');
-
 const loginSelector = '#site-header > div > div > div > header.elementor-element.elementor-element-73f40419.elementor-section-content-middle.elementor-section-stretched.elementor-section-boxed.elementor-section-height-default.elementor-section-height-default.elementor-section.elementor-top-section.elementor-sticky.elementor-sticky--effects.elementor-sticky--active.elementor-section--handles-inside > div > div > div.elementor-element.elementor-element-3b093c81.elementor-column.elementor-col-25.elementor-top-column > div > div > div > div > div > a';
 const emailSelector = '#captcha-form > fieldset > div:nth-child(1) > div > div > input';
 const text1Selector = '#dashboard > div > div:nth-child(2) > div.span9 > table > tbody > tr:nth-child(1) > th > a';
@@ -61,9 +59,9 @@ const start = () => {
     }
   })
 }
-console.log('start s🦋');
+
 start().then(res=> {
-  console.log(res);
+  console.log('🦋🦋🦋🦋', res);
   let context = `
 <html>
  <head>
@@ -76,6 +74,6 @@ start().then(res=> {
   </body>
 </html>
 `;
-
+        // 当前目录下创建index.html
 	fs.writeFileSync("index.html", context, "utf8");
 })
