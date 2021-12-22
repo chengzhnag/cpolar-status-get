@@ -4,10 +4,11 @@
 name: Node.js CI
 
 on:
-  push:
+  # 手动触发
+  workflow_dispatch:
   # 定时器
   schedule: 
-    - cron: '0 1 * * *'
+    - cron: '0 1,13 * * *'
 
 jobs:
   build:
