@@ -6,6 +6,7 @@ const emailSelector = '#captcha-form > fieldset > div:nth-child(1) > div > div >
 const text1Selector = '#dashboard > div > div:nth-child(2) > div.span9 > table > tbody > tr:nth-child(1) > th > a';
 const text2Selector = '#dashboard > div > div:nth-child(2) > div.span9 > table > tbody > tr:nth-child(2) > th > a';
 const text3Selector = '#dashboard > div > div:nth-child(2) > div.span9 > table > tbody > tr:nth-child(3) > th > a';
+const statusSelector = '#get-started > div.row-fluid.get-started > div.left-nav.span3 > ul:nth-child(2) > li:nth-child(1) > a';
 
 const isDebugger = false;
 
@@ -33,16 +34,14 @@ const start = () => {
       // 密码输入框输入，selector错误的话可以重新获取替换
       await newPage.type('#password', process.env.CPOLAR_PASSWORD, { delay: 100 });
       // 点击登录按钮
-      await Promise.all([
-        newPage.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10002 }),
-        newPage.click('#loginBtn'),
-      ]);
+      await newPage.click('#loginBtn');
 
-      // 登录完成后替换url进入状态
-      await newPage.evaluate(() => {
-        location.replace(location.href.replace(location.pathname, '/status'))
-      });
-      // 等待状态页面#dashboard存在
+      // 等待状态页面#get-started存在 意味着首页加载完成
+      await newPage.waitForSelector('#get-started');
+      // 点击左边状态一栏
+      await newPage.click(statusSelector);
+
+      // 等待状态页面#dashboard存在 意味着状态页加载完成
       await newPage.waitForSelector('#dashboard');
       // 获取website以及ssh地址
       const text1 = await newPage.$eval(text1Selector, node => node.innerText)
