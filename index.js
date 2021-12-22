@@ -34,7 +34,7 @@ const start = () => {
       await newPage.type('#password', process.env.CPOLAR_PASSWORD, { delay: 100 });
       // 点击登录按钮
       await Promise.all([
-        newPage.waitForNavigation(),
+        newPage.waitForNavigation({ waitUntil: 'networkidle0', timeout: 10002 }),
         newPage.click('#loginBtn'),
       ]);
 
@@ -76,4 +76,6 @@ start().then(res=> {
 `;
         // 当前目录下创建index.html
 	fs.writeFileSync("index.html", context, "utf8");
+}).catch(err => {
+    console.log('start err catch🐰:', err);
 })
