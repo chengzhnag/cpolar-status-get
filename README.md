@@ -2,7 +2,7 @@
 用于cpolar内网穿透后定时获取状态通过邮件发送自己
 
 ### 树莓派公网ssh远程访问家中树莓派  
-https://zhuanlan.zhihu.com/p/386691793
+https://www.zhihu.com/question/35801849/answer/3041226511
 
 > 通过上面教程可以实现树莓派公网ssh远程访问，教程中使用的是[cpolar](https://www.cpolar.com/)实现内网穿透，ssh访问的端口经常会改变，需要登陆进去查看状态。
 所以通过Github Actions能力实现每天定时发送邮件告知自己cpolar的状态。
