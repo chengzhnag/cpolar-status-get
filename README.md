@@ -3,6 +3,8 @@
 
 ### 树莓派公网ssh远程访问家中树莓派  
 https://www.zhihu.com/question/35801849/answer/3041226511
+##### 或者查看cpolar官网的教程
+https://cpolar.com/docs#linux-system-installation-cpolar
 
 > 通过上面教程可以实现树莓派公网ssh远程访问，教程中使用的是[cpolar](https://www.cpolar.com/)实现内网穿透，ssh访问的端口经常会改变，需要登陆进去查看状态。
 所以通过Github Actions能力实现每天定时发送邮件告知自己cpolar的状态。
