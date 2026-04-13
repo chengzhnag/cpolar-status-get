@@ -1,224 +1,252 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require("puppeteer");
 const fs = require("fs");
 
-const emailSelector = '#captcha-form > fieldset > div:nth-child(1) > div > div > input';
-const statusSelector = '#get-started > div.row-fluid.get-started > div.left-nav.span3 > ul:nth-child(2) > li:nth-child(1) > a';
+const emailSelector =
+  "#captcha-form > fieldset > div:nth-child(1) > div > div > input";
 
-const isDebugger = false;
+// --- 配置区 ---
+const isDebugger = false; // 开启调试模式
+const LOGIN_EMAIL = process.env.CPOLAR_EMAIL;
+const LOGIN_PASS = process.env.CPOLAR_PASSWORD;
 
 const start = () => {
   return new Promise(async (resolve, reject) => {
+    let browser = null;
     try {
-      const browser = await puppeteer.launch({ 
+      browser = await puppeteer.launch({
         headless: !isDebugger,
-        // 【关键修复】：在 GitHub Actions 中必须添加此参数
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: ["--no-sandbox", "--disable-setuid-sandbox"],
+        defaultViewport: null,
       });
+
       const page = await browser.newPage();
-      await page.setViewport({ width: 1920, height: 1080 });
-      // 【优化 1】：增加全局超时时间到 60秒，防止网络慢导致失败
-      page.setDefaultTimeout(60000);
-      // 在 goto 之前，先测试一下能不能访问百度
+      // 增加超时时间，防止网络波动
+      await page.setDefaultNavigationTimeout(60000);
+
+      console.log("🚀 正在启动浏览器，测试网络连接...");
+
+      // 尝试访问百度测试网络
       try {
-        await page.goto('https://www.baidu.com', { waitUntil: 'domcontentloaded', timeout: 10000 });
-        console.log('✅ 网络测试通过，正在跳转回 cpolar...');
-        await page.goto('https://dashboard.cpolar.com/login', { waitUntil: 'domcontentloaded', timeout: 60000 });
-      } catch (e) {
-        console.log('GitHub Actions 环境网络不通，无法访问外部网站');
+        await page.goto("https://www.baidu.com", {
+          waitUntil: "domcontentloaded",
+          timeout: 10000,
+        });
+        console.log("✅ 网络通畅，正在访问 Cpolar...");
+      } catch (netErr) {
+        console.log("🌐 网络测试较慢，直接尝试访问目标...");
       }
-      await page.goto('https://dashboard.cpolar.com/login', {
-        waitUntil: 'domcontentloaded', 
-        timeout: 60000
+
+      // 访问登录页
+      await page.goto("https://dashboard.cpolar.com/login", {
+        waitUntil: "networkidle2",
+        timeout: 60000,
       });
-      const newPage = page;
-      await newPage.setViewport({ width: 1920, height: 1080 });
-      // 等待登录页面#captcha-form存在
-      await newPage.waitForSelector('#captcha-form');
 
-      /* 进行登录操作 */
-      // 邮箱输入框输入，selector错误的话可以重新获取替换
-      await newPage.type(emailSelector, '1772591173@qq.com', { delay: 100 });
-      // 密码输入框输入，selector错误的话可以重新获取替换
-      await newPage.type('#password', 'just1772591173', { delay: 100 });
-      // 点击登录按钮
-      await newPage.click('#loginBtn');
+      // 检查是否在登录页（防止已经登录）
+      try {
+        await page.waitForSelector("#captcha-form", { timeout: 5000 });
+        console.log("📝 检测到登录表单，正在输入账号...");
 
-      // 等待状态页面#get-started存在 意味着首页加载完成
-      await newPage.waitForSelector('#get-started');
-      // 点击左边状态一栏
-      await newPage.click(statusSelector);
+        // 执行登录操作
+        await page.type(emailSelector, LOGIN_EMAIL, { delay: 100 });
+        await page.type("#password", LOGIN_PASS, { delay: 100 });
 
-      // 等待状态页面#dashboard存在 意味着状态页加载完成
-      await newPage.waitForSelector('#dashboard');
+        // 点击登录（这里建议用文本点击更稳定，或者确认按钮ID）
+        await Promise.all([
+          page.waitForNavigation({ waitUntil: "networkidle2", timeout: 60000 }),
+          page.click("#loginBtn"), // 触发点击并等待跳转
+        ]);
+      } catch (e) {
+        console.log("💡 似乎已处于登录状态，跳过登录步骤");
+      }
 
-      // 【核心修改】：直接在页面上下文中获取表格的完整 HTML 字符串
-      // 我们选择 table，这样能获取到包含表头(thead)和表体(tbody)的完整结构
+      // 导航到状态页面
+      console.log("🧭 正在跳转到隧道状态页面...");
+      await page.goto("https://dashboard.cpolar.com/status", {
+        waitUntil: "networkidle2",
+        timeout: 60000,
+      });
+
+      // 【核心】提取表格数据
+      // 注意：这里我们提取整个 <table> 的 outerHTML，包括 thead 和 tbody
       const rawTableHtml = await page.evaluate(() => {
-        const table = document.querySelector('#dashboard table');
-        return table ? table.outerHTML : ''; // 返回整个表格标签及其内容
+        const table = document.querySelector("#dashboard table");
+        return table ? table.outerHTML : "<p>未找到隧道表格</p>";
       });
 
       await browser.close();
       resolve(rawTableHtml);
     } catch (error) {
-      await browser.close();
+      console.error("❌ 主流程错误:", error);
+      if (browser) await browser.close();
       reject(error);
     }
-  })
-}
+  });
+};
 
-start().then(tableContent => {
-  console.log('🦋🦋🦋🦋', tableContent);
-  if (!tableContent) {
-    console.log('❌ 未找到表格内容');
-    return;
-  }
+// --- 邮件生成与渲染 ---
+start()
+  .then((tableContent) => {
+    console.log("✅ 数据抓取成功，正在生成响应式邮件...");
 
-  console.log('✅ 表格 HTML 已获取，正在生成文件...');
+    // 1. 【预处理】：移除原始表格中的固定宽度和内联样式，防止干扰响应式布局
+    // 这是一个简单的正则替换，移除 width="..." 和 style="..." 属性
+    let cleanTable = tableContent
+      .replace(/width\s*=\s*["'][^"']*["']/gi, "") // 移除 width 属性
+      .replace(/style\s*=\s*["'][^"']*["']/gi, ""); // 移除 style 属性
 
-  // 构建带有样式的完整 HTML 结构
-  // 我们将提取到的 tableContent 直接放入 body 中
-  let context = `
-<html>
- <head>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <title>隧道列表数据</title>
-  <style>
-    /* 基础重置 */
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background-color: #f4f6f9;
-      padding: 20px;
-      color: #333;
-    }
+    // 2. 构建响应式 HTML 邮件
+    // 这个模板使用了 "Responsive Table" 技巧：在手机上，表格会变成块级元素堆叠
+    const emailHtml = `
+      <!DOCTYPE html>
+      <html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="x-apple-disable-message-reformatting">
+        <title>🚀 Cpolar 隧道状态监控日报</title>
+        <!--[if mso]>
+        <style>
+          * { font-family: sans-serif !important; }
+          table { border-collapse: collapse; }
+        </style>
+        <![endif]-->
+        <style type="text/css">
+          /* --- 基础 CSS Reset --- */
+          body, table, td, div, p, a { 
+            -webkit-text-size-adjust: 100%; 
+            -ms-text-size-adjust: 100%; 
+            margin: 0; 
+            padding: 0; 
+            border: 0; 
+          }
+          img { 
+            border: 0; 
+            height: auto; 
+            line-height: 100%; 
+            outline: none; 
+            text-decoration: none; 
+            -ms-interpolation-mode: bicubic; 
+          }
+          table { 
+            border-collapse: collapse; 
+            mso-table-lspace: 0pt; 
+            mso-table-rspace: 0pt; 
+          }
+          /* Outlook 2013 Fix */
+          body {
+            height: 100% !important;
+            width: 100% !important;
+            margin: 0;
+            padding: 0;
+            line-height: 1.6;
+          }
+          /* --- 响应式样式 --- */
+          @media screen and (max-width: 600px) {
+            .email-container {
+              width: 100% !important;
+              padding-left: 10px !important;
+              padding-right: 10px !important;
+            }
 
-    h2 {
-      text-align: center;
-      color: #2c3e50;
-      margin-bottom: 30px;
-    }
+            /* 强制表格在小屏幕上可横向滚动 */
+            .responsive-table {
+              overflow-x: auto;
+              display: block;
+              width: 100%;
+            }
 
-    /* 表格容器，增加滚动条以防表格过宽 */
-    .table-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      background: #fff;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      overflow-x: auto; 
-    }
+            /* 或者使用 "堆叠卡片" 效果 (二选一) */
+            /*
+            table, thead, tbody, th, td, tr { 
+              display: block; 
+            }
+            thead tr { 
+              position: absolute; 
+              top: -9999px; 
+              left: -9999px; 
+            }
+            tr { 
+              margin-bottom: 15px; 
+              border: 1px solid #ddd; 
+              border-radius: 8px; 
+              overflow: hidden; 
+            }
+            tr td { 
+              border: none !important; 
+              border-bottom: 1px solid #eee; 
+              position: relative; 
+              padding-left: 50% !important; 
+              text-align: right; 
+            }
+            tr td:last-child { 
+              border-bottom: 0; 
+            }
+            tr td:before {
+              content: attr(data-label);
+              position: absolute;
+              left: 10px;
+              width: 40%;
+              padding-right: 10px;
+              white-space: nowrap;
+              font-weight: bold;
+              color: #333;
+              background: #f8f9fa;
+              padding: 10px;
+              font-size: 12px;
+            }
+            */
+          }
+        </style>
+      </head>
+      <body style="background-color: #f4f5f7; margin: 0; padding: 20px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
 
-    /* 表格样式 */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 0;
-      font-size: 14px;
-    }
+        <!-- 主容器 -->
+        <div style="max-width: 800px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+          
+          <!-- 标题栏 -->
+          <div style="background: #2c3e50; padding: 30px; text-align: center; color: #ffffff;">
+            <h1 style="margin: 0; font-size: 24px; font-weight: 600;">🚀 隧道状态监控日报</h1>
+            <p style="margin: 10px 0 0; font-size: 14px; opacity: 0.8;">当前时间: ${new Date().toLocaleString()}</p>
+          </div>
 
-    /* 表头样式 */
-    thead th {
-      background-color: #34495e;
-      color: #fff;
-      padding: 12px 15px;
-      text-align: left;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
+          <!-- 内容区 -->
+          <div style="padding: 30px;">
+            <p>您好，这是当前在线的隧道列表：</p>
+            
+            <!-- 响应式表格容器 -->
+            <div class="responsive-table">
+              ${cleanTable}
+            </div>
 
-    /* 单元格样式 */
-    tbody td {
-      padding: 12px 15px;
-      border-bottom: 1px solid #e1e1e1;
-      vertical-align: middle;
-    }
+            <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
+            
+            <p style="color: #7f8c8d; font-size: 12px; text-align: center;">
+              这是一封自动发送的邮件，请勿直接回复。<br>
+              © ${new Date().getFullYear()} Cpolar 监控系统
+            </p>
+          </div>
+        </div>
 
-    /* 斑马纹效果，增加可读性 */
-    tbody tr:nth-of-type(even) {
-      background-color: #f9f9f9;
-    }
-
-    /* 鼠标悬停效果 */
-    tbody tr:hover {
-      background-color: #f1f1f1;
-      cursor: pointer;
-    }
-    
-    /* 最后一行去掉底部边框 */
-    tbody tr:last-of-type td {
-      border-bottom: 2px solid #34495e;
-    }
-
-    /* 链接样式优化 */
-    td a {
-      color: #3498db;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    td a:hover {
-      text-decoration: underline;
-      color: #1d6fa5;
-    }
-  </style>
- </head>
- <body>
-    <h2>在线隧道列表监控</h2>
-    <div class="table-container">
-      <!-- 这里直接插入抓取到的原始表格 HTML -->
-      ${tableContent}
-    </div>
-  </body>
-</html>
+      </body>
+      </html>
     `;
 
-  // 写入文件
-  fs.writeFileSync("index.html", context, "utf8");
-  console.log('🎉 成功！请打开 index.html 查看带样式的表格。');
-}).catch(err => {
-  console.log('start err catch🐰:', err);
-  let errorHtml = `
-<html>
- <head>
-  <meta charset="utf-8">
-  <title>脚本执行错误</title>
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #ffebee;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .error-card {
-      background: #fff;
-      padding: 40px;
-      border-radius: 10px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-      max-width: 500px;
-      text-align: center;
-      border-left: 5px solid #e74c3c;
-    }
-    .icon { font-size: 50px; margin-bottom: 20px; display: block; }
-    h1 { color: #e74c3c; margin: 0 0 10px 0; font-size: 24px; }
-    p { color: #555; line-height: 1.6; word-break: break-all; }
-    .footer { margin-top: 20px; font-size: 12px; color: #999; }
-  </style>
- </head>
- <body>
-    <div class="error-card">
-      <span class="icon">⚠️</span>
-      <h1>脚本执行出错</h1>
-      <p><strong>错误详情：</strong></p>
-      <p>${err.message}</p>
-      <div class="footer">请检查账号密码或网络连接</div>
-    </div>
-  </body>
-</html>`;
-  fs.writeFileSync("index.html", errorHtml, "utf8");
-  console.log('📄 错误文件已生成');
-})
+    // 写入文件
+    fs.writeFileSync("index.html", emailHtml, "utf8");
+    console.log("🎉 成功！邮件已生成 index.html");
+    console.log("📧 接下来你可以通过 Nodemailer 或 GitHub Action 发送此 HTML");
+  })
+  .catch((err) => {
+    console.error("❌ 脚本执行失败:", err);
+    const errorHtml = `
+    <html>
+      <body style="font-family: sans-serif; background: #fff3f3; padding: 40px; color: #d63333;">
+        <h2>❌ 脚本运行出错</h2>
+        <p><strong>错误信息:</strong> ${err.message}</p>
+        <p>请检查日志并重试。</p>
+      </body>
+    </html>`;
+    fs.writeFileSync("index.html", errorHtml, "utf8");
+  });
