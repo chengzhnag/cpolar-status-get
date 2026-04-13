@@ -96,26 +96,36 @@ start()
 
     // 【核心修改】移除 tbody 标签 + 反转义 HTML 实体
     // 1. 先把 &lt; 变回 < (防止邮件客户端把代码当文本显示)
-    let cleanTable = tableContent
+    let cleanTable = tableContent;
+
+    // 1. 反转义 HTML 实体 (把 &lt; 变回 <)
+    cleanTable = cleanTable
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'")
       .replace(/&amp;/g, '&');
 
-    // 2. 移除 <tbody> 和 </tbody> (防止 Gmail 过滤导致布局错乱)
+    // 2. 移除干扰标签 (tbody, thead)
+    // 邮件客户端不喜欢这些标签，直接删掉，让 tr 直接位于 table 下
     cleanTable = cleanTable.replace(/<tbody[^>]*>/g, '').replace(/<\/tbody>/g, '');
+    cleanTable = cleanTable.replace(/<thead[^>]*>/g, '').replace(/<\/thead>/g, '');
 
-    // 3. 移除原有的 width 和 style 属性 (防止与邮件样式冲突)
+    // 3. 移除原有的 width 和 style 属性
     cleanTable = cleanTable.replace(/width\s*=\s*["'][^"']*["']/gi, '');
     cleanTable = cleanTable.replace(/style\s*=\s*["'][^"']*["']/gi, '');
 
-    // 4. 重新注入内联样式 (确保邮件里有边框和颜色)
+    // 4. 重新注入内联样式
     cleanTable = cleanTable.replace(/<table/, '<table style="width: 100%; border-collapse: collapse; min-width: 400px;"');
-    cleanTable = cleanTable.replace(/<th/g, '<th style="background-color: #34495e; color: #fff; padding: 12px; text-align: left; border: 1px solid #ddd;"');
+    cleanTable = cleanTable.replace(/<th/g, '<th style="padding: 12px; text-align: left; border: 1px solid #ddd;"');
     cleanTable = cleanTable.replace(/<td/g, '<td style="padding: 10px; border: 1px solid #ddd; color: #333;"');
     cleanTable = cleanTable.replace(/<tr/g, '<tr style="background-color: #ffffff;">');
     cleanTable = cleanTable.replace(/<a/g, '<a style="color: #3498db; text-decoration: none; font-weight: bold;"');
+
+    // 5. 【关键修复】清理标签末尾多余的 ">" 符号
+    // 正则解释：查找 ">" 或 ">>"，替换为 ">"
+    // 这一步是为了修复你看到的 "<tr>..." 问题
+    cleanTable = cleanTable.replace(/>>/g, '>'); 
 
     // 2. 构建响应式 HTML 邮件
     // 这个模板使用了 "Responsive Table" 技巧：在手机上，表格会变成块级元素堆叠
@@ -230,12 +240,12 @@ start()
     <!-- 标题栏 -->
     <div style="background: #2c3e50; padding: 30px; text-align: center; color: #ffffff;">
       <h1 style="margin: 0; font-size: 24px; font-weight: 600;">🚀 隧道状态监控日报</h1>
-      <p style="margin: 10px 0 0; font-size: 14px; opacity: 0.8;">当前时间: ${new Date().toLocaleString()}</p>
+      <p style="margin: 10px 0 0; font-size: 14px; opacity: 0.8;">当前时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>
     </div>
 
     <!-- 内容区 -->
     <div style="padding: 30px;">
-      <p>您好，这是当前在线的隧道列表：</p>
+      <p style="margin-bottom: 12px;">您好，这是当前在线的隧道列表：</p>
       
       <!-- 响应式表格容器 -->
       <div class="responsive-table">
