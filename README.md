@@ -39,20 +39,15 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        # 指定nodejs版本
-        node-version: [20.17.0]
-        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
-
     steps:
-    - uses: actions/checkout@v2
-    - name: Use Node.js ${{ matrix.node-version }}
-      # 安装nodejs环境
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
       uses: actions/setup-node@v2
       with:
-        node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+        node-version: '20'
+
     - name: npm install
       # 安装依赖包
       run: npm install
