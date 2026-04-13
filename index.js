@@ -16,7 +16,20 @@ const start = () => {
       });
       const page = await browser.newPage();
       await page.setViewport({ width: 1920, height: 1080 });
-      await page.goto('https://dashboard.cpolar.com/login');
+      // 【优化 1】：增加全局超时时间到 60秒，防止网络慢导致失败
+      page.setDefaultTimeout(60000);
+      // 在 goto 之前，先测试一下能不能访问百度
+      try {
+        await page.goto('https://www.baidu.com', { waitUntil: 'domcontentloaded', timeout: 10000 });
+        console.log('✅ 网络测试通过，正在跳转回 cpolar...');
+        await page.goto('https://dashboard.cpolar.com/login', { waitUntil: 'domcontentloaded', timeout: 60000 });
+      } catch (e) {
+        console.log('GitHub Actions 环境网络不通，无法访问外部网站');
+      }
+      await page.goto('https://dashboard.cpolar.com/login', {
+        waitUntil: 'domcontentloaded', 
+        timeout: 60000
+      });
       const newPage = page;
       await newPage.setViewport({ width: 1920, height: 1080 });
       // 等待登录页面#captcha-form存在
@@ -48,6 +61,7 @@ const start = () => {
       await browser.close();
       resolve(rawTableHtml);
     } catch (error) {
+      await browser.close();
       reject(error);
     }
   })
