@@ -1,9 +1,7 @@
 # cpolar-status-get
 用于cpolar内网穿透后定时获取状态通过邮件发送自己
 
-### 树莓派公网ssh远程访问家中树莓派  
-https://www.zhihu.com/question/35801849/answer/3041226511
-##### 或者查看cpolar官网的教程
+### 查看cpolar官网的教程
 https://cpolar.com/docs#linux-system-installation-cpolar
 
 > 通过上面教程可以实现树莓派公网ssh远程访问，教程中使用的是[cpolar](https://www.cpolar.com/)实现内网穿透，ssh访问的端口经常会改变，需要登陆进去查看状态。
@@ -44,7 +42,7 @@ jobs:
     strategy:
       matrix:
         # 指定nodejs版本
-        node-version: [12.7.0]
+        node-version: [20.17.0]
         # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
     steps:
