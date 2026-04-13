@@ -1,7 +1,16 @@
 # cpolar-status-get
 用于cpolar内网穿透后定时获取状态通过邮件发送自己
 
-### 查看cpolar官网的教程
+---
+**📅 更新日志：2026年4月13日 - 最新可用版本**
+> 本仓库代码已更新至 **2026年最新维护版**，Puppeteer 兼容性问题及邮件样式渲染 Bug。以下为最新运行效果截图：
+
+![最新运行效果截图1](https://cdn.jsdelivr.net/gh/Zgrowth/image@master/document/image.8vni7al6ky.webp)
+
+![最新运行效果截图2](https://cdn.jsdelivr.net/gh/Zgrowth/image@master/document/Screenshot_2026-04-13-13-51-53-206_com.tencent.mm.77e5a3zl1p.webp)
+---
+
+### 树莓派公网ssh远程访问家中树莓派
 https://cpolar.com/docs#linux-system-installation-cpolar
 
 > 通过上面教程可以实现树莓派公网ssh远程访问，教程中使用的是[cpolar](https://www.cpolar.com/)实现内网穿透，ssh访问的端口经常会改变，需要登陆进去查看状态。
