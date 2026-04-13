@@ -67,6 +67,11 @@ const start = () => {
         timeout: 60000,
       });
 
+      console.log('⏳ 正在等待表格数据加载...');
+
+      await page.waitForSelector('#dashboard table', { timeout: 60000 });
+      console.log('✅ 表格已加载完成');
+
       // 【核心】提取表格数据
       // 注意：这里我们提取整个 <table> 的 outerHTML，包括 thead 和 tbody
       const rawTableHtml = await page.evaluate(() => {
@@ -89,149 +94,165 @@ start()
   .then((tableContent) => {
     console.log("✅ 数据抓取成功，正在生成响应式邮件...");
 
-    // 1. 【预处理】：移除原始表格中的固定宽度和内联样式，防止干扰响应式布局
-    // 这是一个简单的正则替换，移除 width="..." 和 style="..." 属性
+    // 【核心修改】移除 tbody 标签 + 反转义 HTML 实体
+    // 1. 先把 &lt; 变回 < (防止邮件客户端把代码当文本显示)
     let cleanTable = tableContent
-      .replace(/width\s*=\s*["'][^"']*["']/gi, "") // 移除 width 属性
-      .replace(/style\s*=\s*["'][^"']*["']/gi, ""); // 移除 style 属性
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&amp;/g, '&');
+
+    // 2. 移除 <tbody> 和 </tbody> (防止 Gmail 过滤导致布局错乱)
+    cleanTable = cleanTable.replace(/<tbody[^>]*>/g, '').replace(/<\/tbody>/g, '');
+
+    // 3. 移除原有的 width 和 style 属性 (防止与邮件样式冲突)
+    cleanTable = cleanTable.replace(/width\s*=\s*["'][^"']*["']/gi, '');
+    cleanTable = cleanTable.replace(/style\s*=\s*["'][^"']*["']/gi, '');
+
+    // 4. 重新注入内联样式 (确保邮件里有边框和颜色)
+    cleanTable = cleanTable.replace(/<table/, '<table style="width: 100%; border-collapse: collapse; min-width: 400px;"');
+    cleanTable = cleanTable.replace(/<th/g, '<th style="background-color: #34495e; color: #fff; padding: 12px; text-align: left; border: 1px solid #ddd;"');
+    cleanTable = cleanTable.replace(/<td/g, '<td style="padding: 10px; border: 1px solid #ddd; color: #333;"');
+    cleanTable = cleanTable.replace(/<tr/g, '<tr style="background-color: #ffffff;">');
+    cleanTable = cleanTable.replace(/<a/g, '<a style="color: #3498db; text-decoration: none; font-weight: bold;"');
 
     // 2. 构建响应式 HTML 邮件
     // 这个模板使用了 "Responsive Table" 技巧：在手机上，表格会变成块级元素堆叠
     const emailHtml = `
-      <!DOCTYPE html>
-      <html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
-        <meta name="x-apple-disable-message-reformatting">
-        <title>🚀 Cpolar 隧道状态监控日报</title>
-        <!--[if mso]>
-        <style>
-          * { font-family: sans-serif !important; }
-          table { border-collapse: collapse; }
-        </style>
-        <![endif]-->
-        <style type="text/css">
-          /* --- 基础 CSS Reset --- */
-          body, table, td, div, p, a { 
-            -webkit-text-size-adjust: 100%; 
-            -ms-text-size-adjust: 100%; 
-            margin: 0; 
-            padding: 0; 
-            border: 0; 
-          }
-          img { 
-            border: 0; 
-            height: auto; 
-            line-height: 100%; 
-            outline: none; 
-            text-decoration: none; 
-            -ms-interpolation-mode: bicubic; 
-          }
-          table { 
-            border-collapse: collapse; 
-            mso-table-lspace: 0pt; 
-            mso-table-rspace: 0pt; 
-          }
-          /* Outlook 2013 Fix */
-          body {
-            height: 100% !important;
-            width: 100% !important;
-            margin: 0;
-            padding: 0;
-            line-height: 1.6;
-          }
-          /* --- 响应式样式 --- */
-          @media screen and (max-width: 600px) {
-            .email-container {
-              width: 100% !important;
-              padding-left: 10px !important;
-              padding-right: 10px !important;
-            }
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="x-apple-disable-message-reformatting">
+  <title>🚀 Cpolar 隧道状态监控日报</title>
+  <!--[if mso]>
+  <style>
+    * { font-family: sans-serif !important; }
+    table { border-collapse: collapse; }
+  </style>
+  <![endif]-->
+  <style type="text/css">
+    /* --- 基础 CSS Reset --- */
+    body, table, td, div, p, a { 
+      -webkit-text-size-adjust: 100%; 
+      -ms-text-size-adjust: 100%; 
+      margin: 0; 
+      padding: 0; 
+      border: 0; 
+    }
+    img { 
+      border: 0; 
+      height: auto; 
+      line-height: 100%; 
+      outline: none; 
+      text-decoration: none; 
+      -ms-interpolation-mode: bicubic; 
+    }
+    table { 
+      border-collapse: collapse; 
+      mso-table-lspace: 0pt; 
+      mso-table-rspace: 0pt; 
+    }
+    /* Outlook 2013 Fix */
+    body {
+      height: 100% !important;
+      width: 100% !important;
+      margin: 0;
+      padding: 0;
+      line-height: 1.6;
+    }
+    /* --- 响应式样式 --- */
+    @media screen and (max-width: 600px) {
+      .email-container {
+        width: 100% !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+      }
 
-            /* 强制表格在小屏幕上可横向滚动 */
-            .responsive-table {
-              overflow-x: auto;
-              display: block;
-              width: 100%;
-            }
+      /* 强制表格在小屏幕上可横向滚动 */
+      .responsive-table {
+        overflow-x: auto;
+        display: block;
+        width: 100%;
+      }
 
-            /* 或者使用 "堆叠卡片" 效果 (二选一) */
-            /*
-            table, thead, tbody, th, td, tr { 
-              display: block; 
-            }
-            thead tr { 
-              position: absolute; 
-              top: -9999px; 
-              left: -9999px; 
-            }
-            tr { 
-              margin-bottom: 15px; 
-              border: 1px solid #ddd; 
-              border-radius: 8px; 
-              overflow: hidden; 
-            }
-            tr td { 
-              border: none !important; 
-              border-bottom: 1px solid #eee; 
-              position: relative; 
-              padding-left: 50% !important; 
-              text-align: right; 
-            }
-            tr td:last-child { 
-              border-bottom: 0; 
-            }
-            tr td:before {
-              content: attr(data-label);
-              position: absolute;
-              left: 10px;
-              width: 40%;
-              padding-right: 10px;
-              white-space: nowrap;
-              font-weight: bold;
-              color: #333;
-              background: #f8f9fa;
-              padding: 10px;
-              font-size: 12px;
-            }
-            */
-          }
-        </style>
-      </head>
-      <body style="background-color: #f4f5f7; margin: 0; padding: 20px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+      /* 或者使用 "堆叠卡片" 效果 (二选一) */
+      /*
+      table, thead, tbody, th, td, tr { 
+        display: block; 
+      }
+      thead tr { 
+        position: absolute; 
+        top: -9999px; 
+        left: -9999px; 
+      }
+      tr { 
+        margin-bottom: 15px; 
+        border: 1px solid #ddd; 
+        border-radius: 8px; 
+        overflow: hidden; 
+      }
+      tr td { 
+        border: none !important; 
+        border-bottom: 1px solid #eee; 
+        position: relative; 
+        padding-left: 50% !important; 
+        text-align: right; 
+      }
+      tr td:last-child { 
+        border-bottom: 0; 
+      }
+      tr td:before {
+        content: attr(data-label);
+        position: absolute;
+        left: 10px;
+        width: 40%;
+        padding-right: 10px;
+        white-space: nowrap;
+        font-weight: bold;
+        color: #333;
+        background: #f8f9fa;
+        padding: 10px;
+        font-size: 12px;
+      }
+      */
+    }
+  </style>
+</head>
+<body style="background-color: #f4f5f7; margin: 0; padding: 20px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
 
-        <!-- 主容器 -->
-        <div style="max-width: 800px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-          
-          <!-- 标题栏 -->
-          <div style="background: #2c3e50; padding: 30px; text-align: center; color: #ffffff;">
-            <h1 style="margin: 0; font-size: 24px; font-weight: 600;">🚀 隧道状态监控日报</h1>
-            <p style="margin: 10px 0 0; font-size: 14px; opacity: 0.8;">当前时间: ${new Date().toLocaleString()}</p>
-          </div>
+  <!-- 主容器 -->
+  <div style="max-width: 800px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+    
+    <!-- 标题栏 -->
+    <div style="background: #2c3e50; padding: 30px; text-align: center; color: #ffffff;">
+      <h1 style="margin: 0; font-size: 24px; font-weight: 600;">🚀 隧道状态监控日报</h1>
+      <p style="margin: 10px 0 0; font-size: 14px; opacity: 0.8;">当前时间: ${new Date().toLocaleString()}</p>
+    </div>
 
-          <!-- 内容区 -->
-          <div style="padding: 30px;">
-            <p>您好，这是当前在线的隧道列表：</p>
-            
-            <!-- 响应式表格容器 -->
-            <div class="responsive-table">
-              ${cleanTable}
-            </div>
+    <!-- 内容区 -->
+    <div style="padding: 30px;">
+      <p>您好，这是当前在线的隧道列表：</p>
+      
+      <!-- 响应式表格容器 -->
+      <div class="responsive-table">
+        ${cleanTable}
+      </div>
 
-            <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
-            
-            <p style="color: #7f8c8d; font-size: 12px; text-align: center;">
-              这是一封自动发送的邮件，请勿直接回复。<br>
-              © ${new Date().getFullYear()} Cpolar 监控系统
-            </p>
-          </div>
-        </div>
+      <hr style="border: 0; border-top: 1px solid #eee; margin: 30px 0;" />
+      
+      <p style="color: #7f8c8d; font-size: 12px; text-align: center;">
+        这是一封自动发送的邮件，请勿直接回复。<br>
+        © ${new Date().getFullYear()} Cpolar 监控系统
+      </p>
+    </div>
+  </div>
 
-      </body>
-      </html>
-    `;
+</body>
+</html>`;
 
     // 写入文件
     fs.writeFileSync("index.html", emailHtml, "utf8");
@@ -241,12 +262,12 @@ start()
   .catch((err) => {
     console.error("❌ 脚本执行失败:", err);
     const errorHtml = `
-    <html>
-      <body style="font-family: sans-serif; background: #fff3f3; padding: 40px; color: #d63333;">
-        <h2>❌ 脚本运行出错</h2>
-        <p><strong>错误信息:</strong> ${err.message}</p>
-        <p>请检查日志并重试。</p>
-      </body>
-    </html>`;
+<html>
+  <body style="font-family: sans-serif; background: #fff3f3; padding: 40px; color: #d63333;">
+    <h2>❌ 脚本运行出错</h2>
+    <p><strong>错误信息:</strong> ${err.message}</p>
+    <p>请检查日志并重试。</p>
+  </body>
+</html>`;
     fs.writeFileSync("index.html", errorHtml, "utf8");
   });
