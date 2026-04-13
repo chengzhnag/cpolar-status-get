@@ -5,9 +5,13 @@
 **📅 更新日志：2026年4月13日 - 最新可用版本**
 > 本仓库代码已更新至 **2026年最新维护版**，Puppeteer 兼容性问题及邮件样式渲染 Bug。以下为最新运行效果截图：
 
+**Github Actions执行成功截图**
 ![最新运行效果截图1](https://cdn.jsdelivr.net/gh/Zgrowth/image@master/document/image.8vni7al6ky.webp)
 
-![最新运行效果截图2](https://cdn.jsdelivr.net/gh/Zgrowth/image@master/document/Screenshot_2026-04-13-13-51-53-206_com.tencent.mm.77e5a3zl1p.webp)
+
+**手机邮箱接收效果**  
+
+<img src="https://cdn.jsdelivr.net/gh/Zgrowth/image@master/document/Screenshot_2026-04-13-13-51-53-206_com.tencent.mm.77e5a3zl1p.webp" style="width: 300px;" />
 ---
 
 ### 树莓派公网ssh远程访问家中树莓派
