@@ -9,7 +9,11 @@ const isDebugger = false;
 const start = () => {
   return new Promise(async (resolve, reject) => {
     try {
-      const browser = await puppeteer.launch({ headless: !isDebugger });
+      const browser = await puppeteer.launch({ 
+        headless: !isDebugger,
+        // 【关键修复】：在 GitHub Actions 中必须添加此参数
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      });
       const page = await browser.newPage();
       await page.setViewport({ width: 1920, height: 1080 });
       await page.goto('https://dashboard.cpolar.com/login');
@@ -161,4 +165,46 @@ start().then(tableContent => {
   console.log('🎉 成功！请打开 index.html 查看带样式的表格。');
 }).catch(err => {
   console.log('start err catch🐰:', err);
+  let errorHtml = `
+<html>
+ <head>
+  <meta charset="utf-8">
+  <title>脚本执行错误</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #ffebee;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .error-card {
+      background: #fff;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      max-width: 500px;
+      text-align: center;
+      border-left: 5px solid #e74c3c;
+    }
+    .icon { font-size: 50px; margin-bottom: 20px; display: block; }
+    h1 { color: #e74c3c; margin: 0 0 10px 0; font-size: 24px; }
+    p { color: #555; line-height: 1.6; word-break: break-all; }
+    .footer { margin-top: 20px; font-size: 12px; color: #999; }
+  </style>
+ </head>
+ <body>
+    <div class="error-card">
+      <span class="icon">⚠️</span>
+      <h1>脚本执行出错</h1>
+      <p><strong>错误详情：</strong></p>
+      <p>${err.message}</p>
+      <div class="footer">请检查账号密码或网络连接</div>
+    </div>
+  </body>
+</html>`;
+  fs.writeFileSync("index.html", errorHtml, "utf8");
+  console.log('📄 错误文件已生成');
 })
