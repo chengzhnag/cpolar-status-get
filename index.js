@@ -20,6 +20,15 @@ const start = () => {
       });
 
       const page = await browser.newPage();
+
+      // ================== 新增：模拟慢速网络 ==================
+      // 这里模拟 "Slow 3G" 网络
+      // await page.emulateNetworkConditions({
+      //   download: (500 * 1024) / 8, // 下载速度: 500 KB/s (注意单位是 bits/s，所以要除以8)
+      //   upload: (500 * 1024) / 8,   // 上传速度: 500 KB/s
+      //   latency: 2000,              // 延迟: 2000ms (2秒)
+      // });
+      // console.log('🐢 已开启慢速网络模拟 (下载: 500KB/s, 延迟: 2000ms)');
       // 增加超时时间，防止网络波动
       await page.setDefaultNavigationTimeout(60000);
 
@@ -42,23 +51,18 @@ const start = () => {
         timeout: 60000,
       });
 
-      // 检查是否在登录页（防止已经登录）
-      try {
-        await page.waitForSelector("#captcha-form", { timeout: 5000 });
-        console.log("📝 检测到登录表单，正在输入账号...");
+      await page.waitForSelector("#captcha-form", { timeout: 5000 });
+      console.log("📝 检测到登录表单，正在输入账号...");
 
-        // 执行登录操作
-        await page.type(emailSelector, LOGIN_EMAIL, { delay: 100 });
-        await page.type("#password", LOGIN_PASS, { delay: 100 });
+      // 执行登录操作
+      await page.type(emailSelector, LOGIN_EMAIL, { delay: 100 });
+      await page.type("#password", LOGIN_PASS, { delay: 100 });
 
-        // 点击登录（这里建议用文本点击更稳定，或者确认按钮ID）
-        await Promise.all([
-          page.waitForNavigation({ waitUntil: "networkidle2", timeout: 60000 }),
-          page.click("#loginBtn"), // 触发点击并等待跳转
-        ]);
-      } catch (e) {
-        console.log("💡 似乎已处于登录状态，跳过登录步骤");
-      }
+      // 点击登录（这里建议用文本点击更稳定，或者确认按钮ID）
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: "networkidle2", timeout: 60000 }),
+        page.click("#loginBtn"), // 触发点击并等待跳转
+      ]);
 
       // 导航到状态页面
       console.log("🧭 正在跳转到隧道状态页面...");
@@ -67,16 +71,13 @@ const start = () => {
         timeout: 60000,
       });
 
-      console.log('⏳ 正在等待表格数据加载...');
-
-      await page.waitForSelector('#dashboard table', { timeout: 60000 });
-      console.log('✅ 表格已加载完成');
+      console.log('⏳ 正在提取表格数据');
 
       // 【核心】提取表格数据
       // 注意：这里我们提取整个 <table> 的 outerHTML，包括 thead 和 tbody
       const rawTableHtml = await page.evaluate(() => {
         const table = document.querySelector("#dashboard table");
-        return table ? table.outerHTML : "<p>未找到隧道表格</p>";
+        return table ? table.outerHTML : '<p class="not-found">未找到隧道表格</p>';
       });
 
       await browser.close();
@@ -125,7 +126,7 @@ start()
     // 5. 【关键修复】清理标签末尾多余的 ">" 符号
     // 正则解释：查找 ">" 或 ">>"，替换为 ">"
     // 这一步是为了修复你看到的 "<tr>..." 问题
-    cleanTable = cleanTable.replace(/>>/g, '>'); 
+    cleanTable = cleanTable.replace(/>>/g, '>');
 
     // 2. 构建响应式 HTML 邮件
     // 这个模板使用了 "Responsive Table" 技巧：在手机上，表格会变成块级元素堆叠
@@ -138,12 +139,6 @@ start()
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="x-apple-disable-message-reformatting">
   <title>🚀 Cpolar 隧道状态监控日报</title>
-  <!--[if mso]>
-  <style>
-    * { font-family: sans-serif !important; }
-    table { border-collapse: collapse; }
-  </style>
-  <![endif]-->
   <style type="text/css">
     /* --- 基础 CSS Reset --- */
     body, table, td, div, p, a { 
@@ -173,6 +168,13 @@ start()
       margin: 0;
       padding: 0;
       line-height: 1.6;
+      box-sizing: border-box;
+    }
+    .not-found {
+      font-size: 14px;
+      corlor: red;
+      text-align: center;
+      padding: 20px 0;
     }
     /* --- 响应式样式 --- */
     @media screen and (max-width: 600px) {
@@ -188,57 +190,16 @@ start()
         display: block;
         width: 100%;
       }
-
-      /* 或者使用 "堆叠卡片" 效果 (二选一) */
-      /*
-      table, thead, tbody, th, td, tr { 
-        display: block; 
-      }
-      thead tr { 
-        position: absolute; 
-        top: -9999px; 
-        left: -9999px; 
-      }
-      tr { 
-        margin-bottom: 15px; 
-        border: 1px solid #ddd; 
-        border-radius: 8px; 
-        overflow: hidden; 
-      }
-      tr td { 
-        border: none !important; 
-        border-bottom: 1px solid #eee; 
-        position: relative; 
-        padding-left: 50% !important; 
-        text-align: right; 
-      }
-      tr td:last-child { 
-        border-bottom: 0; 
-      }
-      tr td:before {
-        content: attr(data-label);
-        position: absolute;
-        left: 10px;
-        width: 40%;
-        padding-right: 10px;
-        white-space: nowrap;
-        font-weight: bold;
-        color: #333;
-        background: #f8f9fa;
-        padding: 10px;
-        font-size: 12px;
-      }
-      */
     }
   </style>
 </head>
-<body style="background-color: #f4f5f7; margin: 0; padding: 20px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+<body style="background-color: #f4f5f7; margin: 0; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
 
   <!-- 主容器 -->
-  <div style="max-width: 800px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+  <div style="width: 100%; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
     
     <!-- 标题栏 -->
-    <div style="background: #2c3e50; padding: 30px; text-align: center; color: #ffffff;">
+    <div style="background: #2c3e50; padding: 24px; text-align: center; color: #ffffff;">
       <h1 style="margin: 0; font-size: 24px; font-weight: 600;">🚀 隧道状态监控日报</h1>
       <p style="margin: 10px 0 0; font-size: 14px; opacity: 0.8;">当前时间: ${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}</p>
     </div>
@@ -273,6 +234,10 @@ start()
     console.error("❌ 脚本执行失败:", err);
     const errorHtml = `
 <html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
   <body style="font-family: sans-serif; background: #fff3f3; padding: 40px; color: #d63333;">
     <h2>❌ 脚本运行出错</h2>
     <p><strong>错误信息:</strong> ${err.message}</p>
